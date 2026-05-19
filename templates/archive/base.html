@@ -1,0 +1,34 @@
+{% load static %}
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="{% static 'css/main.css' %}" />
+    <link rel="shortcut icon" href="{% static 'favicon.ico' %}" type="image/x-icon" />
+    <script src="https://www.paypal.com/sdk/js?client-id=BAAOI24iv40fdD0tjSRBLQSCR0UixL8Nre2ZP-VPYPGqTq59h7aHbjh2sdt_Nul0q7xMRNsWfXhbMpyrvo&components=hosted-buttons&enable-funding=venmo&currency=USD"></script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3436260386230753" crossorigin="anonymous"></script>
+</head>
+<body class="is-preload">
+    <div id="wrapper">
+        <div id="main">
+            <div class="inner">
+                <header id="header">
+                    <a href="{% url 'home' %}" class="logo"><img src="{% static 'rchs_logo.png' %}" alt="rchistoricalsociety.org"></a>
+                </header>
+                <section>
+                    {% block content %}{% endblock %}
+                </section>
+            </div>
+        </div>
+        <div id="sidebar">
+            {% include 'archive/partials/sidebar.html' %}
+        </div>
+    </div>
+    <script src="{% static 'js/jquery.min.js' %}"></script>
+    <script src="{% static 'js/browser.min.js' %}"></script>
+    <script src="{% static 'js/breakpoints.min.js' %}"></script>
+    <script src="{% static 'js/util.js' %}"></script>
+    <script src="{% static 'js/main.js' %}"></script>
+</body>
+</html>

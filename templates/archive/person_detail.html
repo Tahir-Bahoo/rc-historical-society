@@ -1,0 +1,6 @@
+{% extends 'archive/base.html' %}
+{% block content %}
+<header class="main"><h1>{{ object.name }}</h1></header>
+<p><strong>Role:</strong> {{ object.get_role_type_display }}</p>
+<p>{{ object.bio_text|linebreaksbr }}</p>
+{% endblock %}

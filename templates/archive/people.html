@@ -1,0 +1,10 @@
+{% extends 'archive/base.html' %}
+{% block content %}
+<header class="main"><h1>Notable People</h1></header>
+<hr class="major" />
+<h2>Drivers</h2>
+<ul>{% for person in drivers %}<li><a href="{% url 'person_detail' person.slug %}">{{ person.name }}</a></li>{% empty %}<li>No entries yet.</li>{% endfor %}</ul>
+<hr class="major" />
+<h2>Industry Leaders</h2>
+<ul>{% for person in industry_leaders %}<li><a href="{% url 'person_detail' person.slug %}">{{ person.name }}</a></li>{% empty %}<li>No entries yet.</li>{% endfor %}</ul>
+{% endblock %}

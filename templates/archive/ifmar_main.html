@@ -1,0 +1,13 @@
+{% extends 'archive/base.html' %}
+{% block content %}
+<header class="main"><h2>International Federation of Model Auto Racing</h2></header>
+<h3>Electric Offroad World Championships</h3>
+<div class="table-wrapper"><table><tbody><tr>
+{% for year in years %}
+<td style="text-align:center;">
+{% if year in available_years %}<a href="{% url 'ifmar_year' year %}">{{ year }}</a>{% else %}{{ year }}{% endif %}
+</td>
+{% if forloop.counter|divisibleby:5 %}</tr><tr>{% endif %}
+{% endfor %}
+</tr></tbody></table></div>
+{% endblock %}

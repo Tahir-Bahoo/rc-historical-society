@@ -1,0 +1,22 @@
+{% extends 'archive/base.html' %}
+{% block content %}
+<header class="main"><h1>Welcome to the RC Historical Society!</h1></header>
+<h2>Latest Additions:</h2>
+{% for post in posts %}
+    <p>{{ post.date|date:"F j, Y" }}</p>
+    {% if post.image %}
+    <div style="text-align:center;">
+        <img
+            src="{{ post.image_url }}"
+            alt="{{ post.title }}"
+            style="width:100%;max-width:340px;height:auto;display:inline-block;"
+        >
+    </div>
+    {% endif %}
+    <h3><a href="{{ post.linked_page|default:'#' }}">{{ post.title }}</a></h3>
+    <p>{{ post.description }}</p>
+    <hr class="major" />
+{% empty %}
+    <p>No posts published yet. Add entries from Django admin.</p>
+{% endfor %}
+{% endblock %}

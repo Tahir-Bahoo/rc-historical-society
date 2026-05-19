@@ -1,0 +1,16 @@
+{% extends 'archive/base.html' %}
+{% block content %}
+<header class="main"><h1>{{ title }}</h1></header>
+{% if grouped %}
+    {% for brand, docs in grouped_docs %}
+    <h3>{{ brand }}</h3>
+    <ul>
+        {% for doc in docs %}<li><a href="{{ doc.pdf_url }}" target="_blank" rel="noopener">{{ doc.publication_name }}</a></li>{% endfor %}
+    </ul>
+    {% endfor %}
+{% else %}
+    <ul>
+        {% for doc in documents %}<li><a href="{{ doc.pdf_url }}" target="_blank" rel="noopener">{{ doc.publication_name }}</a></li>{% empty %}<li>No documents available.</li>{% endfor %}
+    </ul>
+{% endif %}
+{% endblock %}

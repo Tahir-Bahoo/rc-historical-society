@@ -1,0 +1,8 @@
+{% extends 'archive/base.html' %}
+{% block content %}
+<header class="main"><h1>Magazine Scans</h1></header>
+{% for title, route in magazines %}
+<h2><a href="{% url route %}">{{ title }}</a></h2>
+<hr class="major" />
+{% endfor %}
+{% endblock %}

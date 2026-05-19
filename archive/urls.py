@@ -1,0 +1,43 @@
+from django.urls import path
+
+from .views import (
+    AcknowledgementsView,
+    CatalogsView,
+    CompanyView,
+    CompetitionPlusView,
+    HomeView,
+    IFMARView,
+    IFMARYearView,
+    LinksView,
+    MagazineIndexView,
+    ManualsView,
+    PeopleView,
+    PersonDetailView,
+    PodcastView,
+    RaceProgramsView,
+    RCModelCarsView,
+    RevUpView,
+    SearchView,
+    XtremeRCCarsView,
+)
+
+urlpatterns = [
+    path("", HomeView.as_view(), name="home"),
+    path("magazine-scans/", MagazineIndexView.as_view(), name="magazine_scans"),
+    path("competition-plus/", CompetitionPlusView.as_view(), name="competition_plus"),
+    path("rev-up/", RevUpView.as_view(), name="rev_up"),
+    path("rc-model-cars/", RCModelCarsView.as_view(), name="rc_model_cars"),
+    path("xtreme-rc-cars/", XtremeRCCarsView.as_view(), name="xtreme_rc_cars"),
+    path("race-programs-and-rules/", RaceProgramsView.as_view(), name="race_programs_rules"),
+    path("catalogs/", CatalogsView.as_view(), name="catalogs"),
+    path("manuals/", ManualsView.as_view(), name="manuals"),
+    path("ifmar/", IFMARView.as_view(), name="ifmar"),
+    path("ifmar/<int:year>/", IFMARYearView.as_view(), name="ifmar_year"),
+    path("people/", PeopleView.as_view(), name="people"),
+    path("people/<slug:slug>/", PersonDetailView.as_view(), name="person_detail"),
+    path("companies/", CompanyView.as_view(), name="companies"),
+    path("radio-impound-podcast/", PodcastView.as_view(), name="podcast"),
+    path("links/", LinksView.as_view(), name="links"),
+    path("acknowledgements/", AcknowledgementsView.as_view(), name="acknowledgements"),
+    path("search/", SearchView.as_view(), name="search"),
+]

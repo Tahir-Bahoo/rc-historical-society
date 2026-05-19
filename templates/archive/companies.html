@@ -1,0 +1,5 @@
+{% extends 'archive/base.html' %}
+{% block content %}
+<header class="main"><h2>Notable Companies & Organizations</h2></header>
+<ul>{% for company in companies %}<li><strong>{{ company.name }}</strong>{% if company.description %} - {{ company.description }}{% endif %}</li>{% empty %}<li>No companies yet.</li>{% endfor %}</ul>
+{% endblock %}

@@ -1,0 +1,67 @@
+<div class="inner">
+    <section id="search" class="alt">
+        <form method="get" action="{% url 'search' %}" role="search" aria-label="Site search">
+            <input
+                type="search"
+                name="q"
+                id="query"
+                placeholder="Search PDFs..."
+                value="{{ request.GET.q|default:'' }}"
+                minlength="2"
+                autocomplete="off"
+                inputmode="search"
+                enterkeyhint="search"
+            />
+            <ul class="actions fit" style="margin-top: 0.6em;">
+                <li><button type="submit" class="button primary fit icon solid fa-search">Search</button></li>
+            </ul>
+        </form>
+    </section>
+
+    <nav id="menu">
+        <header class="major"><h2>Menu</h2></header>
+        <ul>
+            <li><span class="opener">Scans</span>
+                <ul>
+                    <li><a href="{% url 'magazine_scans' %}">Magazines</a></li>
+                    <li><a href="{% url 'race_programs_rules' %}">Race Programs & Rules</a></li>
+                    <li><a href="{% url 'catalogs' %}">Catalogs</a></li>
+                    <li><a href="{% url 'manuals' %}">Manuals / Documents</a></li>
+                </ul>
+            </li>
+            <li><span class="opener">Media</span>
+                <ul><li><a href="{% url 'podcast' %}">Radio Impound Podcast</a></li></ul>
+            </li>
+            <li><span class="opener">Race Results</span>
+                <ul><li><a href="{% url 'ifmar' %}">IFMAR Events</a></li></ul>
+            </li>
+            <li><a href="{% url 'people' %}">People</a></li>
+            <li><a href="{% url 'companies' %}">Companies</a></li>
+            <li><a href="{% url 'links' %}">Links</a></li>
+            <li><a href="{% url 'acknowledgements' %}">Acknowledgements</a></li>
+        </ul>
+    </nav>
+
+    <section>
+        <header class="major"><h2>Get in touch</h2></header>
+        <p>Feel free to reach out if you have any stories or information you'd like to share about the history of radio control racing!</p>
+        <ul class="contact"><li class="icon solid fa-envelope"><a href="#">nick@moto-obscura.com</a></li></ul>
+        <ul class="icons">
+            <li><a href="https://www.facebook.com/profile.php?id=61581119504152" class="icon brands fa-facebook-f"><span class="label">Facebook</span></a></li>
+            <li><a href="https://www.instagram.com/rc.historical/" class="icon brands fa-instagram"><span class="label">Instagram</span></a></li>
+        </ul>
+    </section>
+
+    <section>
+        <header class="major"><h2>Donate</h2></header>
+        <p>RC Historical Society is a free resource for anybody to use. Donations are appreciated to help offset server and maintenance costs.</p>
+        <style>.pp-YQWC9UB5E9QBQ{text-align:center;border:none;border-radius:0.25rem;min-width:11.625rem;padding:0 2rem;height:2rem;font-weight:bold;background-color:#000000;color:#ffffff;font-family:"Helvetica Neue",Arial,sans-serif;font-size:0.875rem;line-height:1.125rem;cursor:pointer;}</style>
+        <form action="https://www.paypal.com/ncp/payment/YQWC9UB5E9QBQ" method="post" target="_blank" style="display:inline-grid;justify-items:center;align-content:start;gap:0.5rem;">
+            <input class="pp-YQWC9UB5E9QBQ" type="submit" value="Donate" />
+            <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="cards" />
+            <section style="font-size:0.75rem;">Powered by <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" alt="paypal" style="height:0.875rem;vertical-align:middle;" /></section>
+        </form>
+    </section>
+
+    <footer id="footer"><p class="copyright">&copy; 2025 RC Historical Society. All rights reserved.</p></footer>
+</div>

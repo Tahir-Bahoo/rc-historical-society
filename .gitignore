@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.sqlite3
+.env
+django_project/env/
+django_project/staticfiles/
+django_project/media/
+.DS_Store
+.idea/
+.vscode/

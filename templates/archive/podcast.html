@@ -1,0 +1,11 @@
+{% extends 'archive/base.html' %}
+{% block content %}
+<header class="main"><h1>Radio Impound Podcast</h1></header>
+{% for episode in episodes %}
+<h3>{{ episode.title }}</h3>
+<p>{{ episode.date|date:"F j, Y" }}</p>
+<p>{{ episode.description }}</p>
+<p><a href="{{ episode.audio_link }}" target="_blank" rel="noopener">Listen</a></p>
+<hr class="major" />
+{% empty %}<p>No episodes published yet.</p>{% endfor %}
+{% endblock %}

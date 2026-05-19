@@ -1,0 +1,5 @@
+{% extends 'archive/base.html' %}
+{% block content %}
+<header class="main"><h1>Links</h1></header>
+<ul>{% for link in links %}<li><a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.title }}</a>{% if link.description %} - {{ link.description }}{% endif %}</li>{% empty %}<li>No links yet.</li>{% endfor %}</ul>
+{% endblock %}
