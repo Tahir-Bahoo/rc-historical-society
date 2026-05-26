@@ -1,0 +1,86 @@
+///
+/// Magazine archive year/month grid (legacy rchistoricalsociety.org layout)
+///
+
+.magazine-archive {
+	.magazine-year {
+		margin-bottom: 2.5em;
+
+		> h3 {
+			text-align: center;
+			margin-bottom: 0.75em;
+		}
+	}
+
+	table.magazine-grid {
+		margin: 0;
+		border-collapse: collapse;
+
+		tbody tr {
+			border: none;
+			border-bottom: solid 1px _palette(border);
+			background-color: transparent;
+
+			&:nth-child(2n + 1) {
+				background-color: transparent;
+			}
+
+			&:last-child {
+				border-bottom: 0;
+			}
+		}
+
+		td {
+			border: none;
+			padding: 1em 1.25em;
+			text-align: center;
+			vertical-align: middle;
+			width: 33.333%;
+		}
+
+		a.magazine-issue-link {
+			border-bottom: none;
+			color: _palette(accent);
+			font-weight: _font(weight);
+
+			&:hover {
+				border-bottom: none;
+				color: _palette(accent) !important;
+				opacity: 0.85;
+			}
+		}
+
+		.magazine-issue-unavailable {
+			color: _palette(fg-light);
+		}
+	}
+
+	.magazine-extras {
+		list-style: none;
+		margin: 0.5em 0 0 0;
+		padding: 0;
+		text-align: center;
+
+		li {
+			display: inline-block;
+			margin: 0.35em 1em;
+			padding: 0;
+		}
+
+		a.magazine-issue-link {
+			border-bottom: none;
+			color: _palette(accent);
+			font-weight: _font(weight);
+
+			&:hover {
+				border-bottom: none;
+				color: _palette(accent) !important;
+				opacity: 0.85;
+			}
+		}
+
+		.magazine-issue-unavailable {
+			color: _palette(fg-light);
+		}
+	}
+}

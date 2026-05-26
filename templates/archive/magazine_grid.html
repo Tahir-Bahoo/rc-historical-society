@@ -1,18 +1,45 @@
 {% extends 'archive/base.html' %}
 {% block content %}
 <header class="main"><h1>{{ title }}</h1></header>
-{% for year, docs in month_rows %}
-<h3>{{ year }}</h3>
-<ul>
-    {% for doc in docs %}
-    <li>
-        {% if doc.available %}
-            <a href="{{ doc.pdf_url }}" target="_blank" rel="noopener">{{ doc.month|default:'Issue' }} - {{ doc.publication_name }}</a>
-        {% else %}
-            {{ doc.month|default:'Issue' }} - {{ doc.publication_name }}
-        {% endif %}
-    </li>
-    {% endfor %}
-</ul>
+<div class="magazine-archive">
+{% for grid in year_grids %}
+<section class="magazine-year">
+    <h3>{{ grid.year }}</h3>
+    <div class="table-wrapper">
+        <table class="magazine-grid">
+            <tbody>
+                {% for row in grid.rows %}
+                <tr>
+                    {% for cell in row %}
+                    <td>
+                        {% if cell.doc %}
+                            {% if cell.doc.available %}
+                                <a href="{{ cell.doc.pdf_url }}" class="magazine-issue-link" target="_blank" rel="noopener">{{ cell.label }}</a>
+                            {% else %}
+                                <span class="magazine-issue-unavailable">{{ cell.label }}</span>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if grid.extras %}
+    <ul class="magazine-extras">
+        {% for extra in grid.extras %}
+        <li>
+            {% if extra.doc.available %}
+                <a href="{{ extra.doc.pdf_url }}" class="magazine-issue-link" target="_blank" rel="noopener">{{ extra.label }}</a>
+            {% else %}
+                <span class="magazine-issue-unavailable">{{ extra.label }}</span>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</section>
 {% endfor %}
+</div>
 {% endblock %}

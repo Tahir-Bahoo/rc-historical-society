@@ -11,6 +11,7 @@ from .models import (
     PDFPage,
     Person,
     PodcastEpisode,
+    PodcastEpisodeAudio,
 )
 
 
@@ -133,12 +134,51 @@ class CompanyAdmin(admin.ModelAdmin):
     search_fields = ("name", "description")
 
 
+class PodcastEpisodeAudioInline(admin.TabularInline):
+    model = PodcastEpisodeAudio
+    extra = 1
+    fields = ("order", "label", "audio_file")
+    ordering = ("order", "id")
+
+
 @admin.register(PodcastEpisode)
 class PodcastEpisodeAdmin(admin.ModelAdmin):
-    list_display = ("date", "title", "audio_link")
+    list_display = ("date", "title", "audio_source", "audio_preview")
     list_filter = ("date",)
     search_fields = ("title", "description")
     date_hierarchy = "date"
+    inlines = (PodcastEpisodeAudioInline,)
+    fieldsets = (
+        ("Episode", {"fields": ("date", "title", "description")}),
+        (
+            "Audio",
+            {
+                "fields": ("audio_file", "audio_link"),
+                "description": (
+                    "Upload the main audio file, add more files in the Audio parts "
+                    "section below for multi-part episodes, or paste an external listen URL."
+                ),
+            },
+        ),
+    )
+
+    @admin.display(description="Source")
+    def audio_source(self, obj):
+        count = len(obj.audio_tracks)
+        if count > 1:
+            return f"{count} files"
+        if obj.audio_file or obj.audio_parts.exists():
+            return "Uploaded"
+        if obj.audio_link:
+            return "External link"
+        return "—"
+
+    @admin.display(description="Audio")
+    def audio_preview(self, obj):
+        url = obj.audio_url
+        if not url:
+            return "—"
+        return format_html('<a href="{}" target="_blank" rel="noopener">Listen</a>', url)
 
 
 @admin.register(IFMAREvent)

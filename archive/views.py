@@ -30,6 +30,67 @@ class MagazineIndexView(TemplateView):
         return context
 
 
+MONTH_GRID = (
+    ("January", "February", "March"),
+    ("April", "May", "June"),
+    ("July", "August", "September"),
+    ("October", "November", "December"),
+)
+_STANDARD_MONTHS = {month for row in MONTH_GRID for month in row}
+
+
+def _magazine_issue_label(doc, year):
+    """Format issue text like the legacy site (e.g. 'January 1986', 'Dec / Jan 1987')."""
+    if doc.month:
+        month = doc.month.replace("/", " / ").replace("  ", " ").strip()
+        return f"{month} {year}"
+    return doc.publication_name or f"Issue {year}"
+
+
+def _grid_slot_for_doc(doc):
+    """Map an issue to a standard month column when possible."""
+    if not doc.month:
+        return None
+    if doc.month in _STANDARD_MONTHS:
+        return doc.month
+    matches = [month for month in _STANDARD_MONTHS if month.lower() in doc.month.lower()]
+    return matches[-1] if matches else None
+
+
+def _build_magazine_year_grids(docs):
+    """Group magazine issues into per-year 4×3 month tables (legacy site layout)."""
+    by_year = {}
+    for doc in docs:
+        by_year.setdefault(doc.year, []).append(doc)
+
+    year_grids = []
+    for year in sorted(by_year):
+        docs_for_year = by_year[year]
+        by_month = {}
+        extras = []
+        for doc in docs_for_year:
+            slot = _grid_slot_for_doc(doc)
+            if slot:
+                by_month[slot] = doc
+            else:
+                extras.append({"doc": doc, "label": _magazine_issue_label(doc, year)})
+        rows = [
+            [
+                {
+                    "month": month,
+                    "doc": by_month.get(month),
+                    "label": _magazine_issue_label(by_month[month], year)
+                    if month in by_month
+                    else "",
+                }
+                for month in month_row
+            ]
+            for month_row in MONTH_GRID
+        ]
+        year_grids.append({"year": year, "rows": rows, "extras": extras})
+    return year_grids
+
+
 class MagazineGridView(TemplateView):
     template_name = "archive/magazine_grid.html"
     category = ""
@@ -38,11 +99,8 @@ class MagazineGridView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         docs = Document.objects.filter(category=self.category).order_by("year", "month")
-        month_rows = {}
-        for doc in docs:
-            month_rows.setdefault(doc.year, []).append(doc)
         context["title"] = self.title
-        context["month_rows"] = sorted(month_rows.items())
+        context["year_grids"] = _build_magazine_year_grids(docs)
         return context
 
 
@@ -152,6 +210,9 @@ class PodcastView(ListView):
     template_name = "archive/podcast.html"
     model = PodcastEpisode
     context_object_name = "episodes"
+
+    def get_queryset(self):
+        return PodcastEpisode.objects.prefetch_related("audio_parts")
 
 
 class LinksView(ListView):

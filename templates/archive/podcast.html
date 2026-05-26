@@ -5,7 +5,16 @@
 <h3>{{ episode.title }}</h3>
 <p>{{ episode.date|date:"F j, Y" }}</p>
 <p>{{ episode.description }}</p>
-<p><a href="{{ episode.audio_link }}" target="_blank" rel="noopener">Listen</a></p>
+{% for track in episode.audio_tracks %}
+    {% if track.hosted %}
+    <p>{% if track.label %}<strong>{{ track.label }}</strong>{% endif %}</p>
+    <audio controls preload="metadata" src="{{ track.url }}">
+        <a href="{{ track.url }}" target="_blank" rel="noopener">Download audio</a>
+    </audio>
+    {% else %}
+    <p><a href="{{ track.url }}" target="_blank" rel="noopener">Listen</a></p>
+    {% endif %}
+{% endfor %}
 <hr class="major" />
 {% empty %}<p>No episodes published yet.</p>{% endfor %}
 {% endblock %}

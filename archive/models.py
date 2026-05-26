@@ -140,7 +140,16 @@ class Company(models.Model):
 class PodcastEpisode(models.Model):
     title = models.CharField(max_length=250)
     date = models.DateField()
-    audio_link = models.CharField(max_length=500)
+    audio_file = models.FileField(
+        upload_to="podcast/",
+        blank=True,
+        help_text="Main audio file (optional if you add audio parts below).",
+    )
+    audio_link = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="Optional external listen URL (used when no uploaded audio).",
+    )
     description = models.TextField(blank=True)
 
     class Meta:
@@ -148,6 +157,72 @@ class PodcastEpisode(models.Model):
 
     def __str__(self):
         return f"{self.date} - {self.title}"
+
+    @property
+    def audio_url(self):
+        """First playback URL for backwards compatibility."""
+        tracks = self.audio_tracks
+        return tracks[0]["url"] if tracks else ""
+
+    @property
+    def audio_tracks(self):
+        """All audio for this episode, in play order."""
+        tracks = []
+        if self.audio_file:
+            tracks.append(
+                {
+                    "label": "",
+                    "url": self.audio_file.url,
+                    "hosted": True,
+                }
+            )
+        for part in self.audio_parts.all():
+            tracks.append(
+                {
+                    "label": part.label,
+                    "url": part.audio_file.url,
+                    "hosted": True,
+                }
+            )
+        if not tracks and self.audio_link:
+            tracks.append(
+                {
+                    "label": "",
+                    "url": self.audio_link,
+                    "hosted": False,
+                }
+            )
+        return tracks
+
+    def has_audio(self):
+        return bool(self.audio_tracks)
+
+
+class PodcastEpisodeAudio(models.Model):
+    """Additional audio file for a multi-part episode."""
+
+    episode = models.ForeignKey(
+        PodcastEpisode,
+        related_name="audio_parts",
+        on_delete=models.CASCADE,
+    )
+    order = models.PositiveSmallIntegerField(default=0)
+    label = models.CharField(
+        max_length=120,
+        blank=True,
+        help_text='Optional label, e.g. "Part 2".',
+    )
+    audio_file = models.FileField(upload_to="podcast/")
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return self.label or f"Part {self.pk}"
+
+    @property
+    def display_label(self):
+        return self.label or "Part"
 
 
 class ExternalLink(models.Model):
