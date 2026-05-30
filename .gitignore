@@ -1,10 +1,23 @@
 __pycache__/
 *.py[cod]
 *.sqlite3
+
+# Environment variables (keep .env.example as a template)
 .env
-django_project/env/
-django_project/staticfiles/
-django_project/media/
+.env.*
+!.env.example
+
+# Python virtual environment
+env/
+venv/
+.venv/
+
+# User uploads
+media/
+
+# Django collectstatic output
+staticfiles/
+
 .DS_Store
 .idea/
 .vscode/
