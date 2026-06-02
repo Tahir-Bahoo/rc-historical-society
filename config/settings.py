@@ -161,6 +161,15 @@ STORAGES = {
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Magazine PDF scans are often 20–100 MB. Django defaults to 2.5 MB which can
+# reject admin uploads; Nginx defaults to 1 MB (see deploy/nginx.conf).
+def _upload_limit_mb(env_name: str, default_mb: int) -> int:
+    return int(os.environ.get(env_name, str(default_mb))) * 1024 * 1024
+
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = _upload_limit_mb("DATA_UPLOAD_MAX_MB", 100)
+FILE_UPLOAD_MAX_MEMORY_SIZE = _upload_limit_mb("FILE_UPLOAD_MAX_MB", 10)
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # URL of the FastAPI search service (set via env in prod, defaults to dev port)

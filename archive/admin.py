@@ -63,18 +63,27 @@ class DocumentAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
+        if not (obj.pdf_file or obj.pdf_file_path):
+            return
+
         pages = getattr(obj, "_last_indexed_pages", None)
-        if pages is None and (obj.pdf_file or obj.pdf_file_path):
-            messages.warning(
-                request,
-                "PDF was saved but the search indexer could not extract any text. "
-                "Check the file is valid and reachable, then use 'Reindex selected PDFs'.",
-            )
-        elif pages:
+        if pages:
             messages.info(
                 request,
                 f"Indexed {pages} page{'s' if pages != 1 else ''} of '{obj.publication_name}'. "
                 "The document is now searchable.",
+            )
+        elif getattr(obj, "_indexing_scheduled", False):
+            messages.info(
+                request,
+                f"PDF saved for '{obj.publication_name}'. "
+                "Search indexing is running in the background and may take a minute for large files.",
+            )
+        else:
+            messages.warning(
+                request,
+                "PDF was saved but search indexing did not start. "
+                "Use 'Reindex selected PDFs' from the document list if needed.",
             )
 
     @admin.action(description="Reindex selected PDFs")

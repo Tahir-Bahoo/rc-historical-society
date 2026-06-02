@@ -22,7 +22,5 @@ staticfiles/
 .idea/
 .vscode/
 
-*/migrations/
-*/migrations
 *.log
 *.pyc

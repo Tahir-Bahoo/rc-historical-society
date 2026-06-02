@@ -9,7 +9,9 @@ fields like ``available`` or ``brand``.
 from __future__ import annotations
 
 import logging
+import threading
 
+from django.db import transaction
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
@@ -35,6 +37,20 @@ def _capture_previous_pdf(sender, instance: Document, **kwargs):
     instance._previous_pdf_signature = _file_signature(previous)
 
 
+def _index_in_background(document_pk: int) -> None:
+    """Extract PDF text without blocking the admin HTTP request."""
+    from .indexing import index_document
+
+    try:
+        document = Document.objects.get(pk=document_pk)
+        pages = index_document(document)
+        logger.info("Background indexed %s: %d pages", document, pages)
+    except Document.DoesNotExist:
+        logger.warning("Background indexing skipped: document %s no longer exists", document_pk)
+    except Exception:
+        logger.exception("Background indexing failed for document %s", document_pk)
+
+
 @receiver(post_save, sender=Document)
 def auto_index_document(sender, instance: Document, created, **kwargs):
     current = _file_signature(instance)
@@ -45,11 +61,13 @@ def auto_index_document(sender, instance: Document, created, **kwargs):
     if not created and current == previous:
         return
 
-    from .indexing import index_document
-
-    try:
-        pages = index_document(instance)
-        instance._last_indexed_pages = pages
-    except Exception:
-        logger.exception("Failed to index document %s", instance)
-        instance._last_indexed_pages = None
+    instance._indexing_scheduled = True
+    document_pk = instance.pk
+    transaction.on_commit(
+        lambda: threading.Thread(
+            target=_index_in_background,
+            args=(document_pk,),
+            daemon=True,
+            name=f"index-pdf-{document_pk}",
+        ).start()
+    )
