@@ -42,6 +42,16 @@ ALLOWED_HOSTS = [
 
 # Application definition
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.lower() in ("1", "true", "yes", "on")
+
+
+# Production bare-metal: set DJANGO_USE_S3=1. Local dev leaves this unset (filesystem).
+USE_S3_MEDIA = _env_bool("DJANGO_USE_S3")
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -51,6 +61,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'archive.apps.ArchiveConfig',
 ]
+if USE_S3_MEDIA:
+    INSTALLED_APPS.append("storages")
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -135,31 +147,58 @@ TIME_ZONE = 'America/New_York'
 USE_I18N = True
 
 USE_TZ = True
-
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = os.environ.get("STATIC_URL", "/static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]
 # STATICFILES_DIRS = [
 #     LEGACY_ROOT / 'assets' / 'assets',
 #     LEGACY_ROOT / 'images',
 #     LEGACY_ROOT,
 # ]
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
-STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
-        if not DEBUG
-        else "django.contrib.staticfiles.storage.StaticFilesStorage",
-    },
-}
+_staticfiles_backend = (
+    "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    if not DEBUG
+    else "django.contrib.staticfiles.storage.StaticFilesStorage"
+)
 
-MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = BASE_DIR / "media"
+
+if USE_S3_MEDIA:
+    AWS_STORAGE_BUCKET_NAME = os.environ.get(
+        "AWS_STORAGE_BUCKET_NAME", "rc-bucket-media"
+    )
+    AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-east-2")
+    AWS_S3_SIGNATURE_VERSION = "s3v4"
+    # EC2 IAM role: leave AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY unset; boto3
+    # uses the instance profile automatically. Set them only for local S3 testing.
+    if os.environ.get("AWS_ACCESS_KEY_ID"):
+        AWS_ACCESS_KEY_ID = os.environ["AWS_ACCESS_KEY_ID"]
+    if os.environ.get("AWS_SECRET_ACCESS_KEY"):
+        AWS_SECRET_ACCESS_KEY = os.environ["AWS_SECRET_ACCESS_KEY"]
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = False
+    AWS_LOCATION = os.environ.get("AWS_LOCATION", "media")
+
+    _default_media_url = (
+        f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/"
+        f"{AWS_LOCATION}/"
+    )
+    MEDIA_URL = os.environ.get("MEDIA_URL", _default_media_url)
+
+    STORAGES = {
+        "default": {"BACKEND": "storages.backends.s3.S3Storage"},
+        "staticfiles": {"BACKEND": _staticfiles_backend},
+    }
+else:
+    MEDIA_URL = os.environ.get("MEDIA_URL", "/media/")
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": _staticfiles_backend},
+    }
 
 # Magazine PDF scans are often 20–100 MB. Django defaults to 2.5 MB which can
 # reject admin uploads; Nginx defaults to 1 MB (see deploy/nginx.conf).
