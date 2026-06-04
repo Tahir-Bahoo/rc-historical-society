@@ -31,7 +31,7 @@ def remove_search_vector(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("archive", "0001_initial"),
+        ("archive", "0004_podcastepisodeaudio"),
     ]
 
     operations = [
