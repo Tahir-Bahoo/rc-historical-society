@@ -132,7 +132,7 @@ After HTTPS is working, confirm the site loads at `https://your-domain.org` and 
 
 - Log in at `https://your-domain.org/admin/`
 - Go to **Documents** → Add or edit a document → upload the PDF
-- **Large files (up to ~100 MB)** are supported
+- **Large files (up to ~400 MB)** are supported
 - After save, search indexing runs **in the background** (may take 30–60 seconds for big scans)
 - Refresh the document page to confirm **page count** and **indexed at** are filled in
 - If search does not work, select the document(s) in the list and use action **“Reindex selected PDFs”**
@@ -210,8 +210,8 @@ Magazine PDFs can be large. Limits are configured in three places — keep them 
 
 | Layer | Setting | Default |
 |-------|---------|---------|
-| Nginx | `client_max_body_size` in `deploy/nginx.conf` | 100 MB |
-| Django | `DATA_UPLOAD_MAX_MB` in `.env` | 100 MB |
+| Nginx | `client_max_body_size` in `deploy/nginx.conf` | 400 MB |
+| Django | `DATA_UPLOAD_MAX_MB` in `.env` | 400 MB |
 | Django | `FILE_UPLOAD_MAX_MB` in `.env` | 10 MB (larger files stream to disk) |
 
 To allow bigger uploads, increase **both** Nginx and `DATA_UPLOAD_MAX_MB`, then rebuild:
@@ -237,8 +237,8 @@ docker compose up -d --build
 
 ### Admin PDF upload fails (413 or timeout)
 
-- Confirm `client_max_body_size 100M;` is in `deploy/nginx.conf`
-- Confirm `DATA_UPLOAD_MAX_MB=100` in `.env`
+- Confirm `client_max_body_size 400M;` is in `deploy/nginx.conf` (or `/etc/nginx/sites-available/django.conf` on EC2)
+- Confirm `DATA_UPLOAD_MAX_MB=400` in `.env`
 - Rebuild: `docker compose up -d --build`
 - Check disk space: `df -h`
 
