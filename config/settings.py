@@ -206,7 +206,7 @@ def _upload_limit_mb(env_name: str, default_mb: int) -> int:
     return int(os.environ.get(env_name, str(default_mb))) * 1024 * 1024
 
 
-DATA_UPLOAD_MAX_MEMORY_SIZE = _upload_limit_mb("DATA_UPLOAD_MAX_MB", 400)
+DATA_UPLOAD_MAX_MEMORY_SIZE = _upload_limit_mb("DATA_UPLOAD_MAX_MB", 4000)
 FILE_UPLOAD_MAX_MEMORY_SIZE = _upload_limit_mb("FILE_UPLOAD_MAX_MB", 10)
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
