@@ -288,7 +288,7 @@ class SearchView(TemplateView):
             return context
 
         offset = (page - 1) * self.page_size
-        params = {"q": query, "limit": self.page_size, "offset": offset}
+        params = {"q": query[:64], "limit": self.page_size, "offset": offset}
         if category:
             params["category"] = category
 
@@ -302,6 +302,13 @@ class SearchView(TemplateView):
             payload = response.json()
             context["results"] = payload.get("results", [])
             context["total"] = payload.get("total", 0)
+        except httpx.TimeoutException:
+            logger.warning("Search service timed out for q=%r", query)
+            context["error"] = (
+                "Search took too long and was stopped so the site stays online. "
+                "Try a longer, more specific word, or pick a category."
+            )
+            return context
         except httpx.HTTPError as exc:
             logger.warning("Search service error: %s", exc)
             context["error"] = (

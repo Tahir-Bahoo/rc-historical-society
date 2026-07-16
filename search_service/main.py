@@ -198,20 +198,30 @@ def _search_postgres(q: str, category: Optional[str], limit: int, offset: int) -
 
 
 def _search_sqlite(q: str, category: Optional[str], limit: int, offset: int) -> tuple[int, list[SearchHit]]:
+    """SQLite search — keep it cheap so a t3.micro does not freeze.
+
+    Avoids a full-table COUNT(*) (second full scan). Caps query length and
+    offset. Still uses LIKE (no FTS index); prefer Postgres in production.
+    """
+    q = q.strip()[:64]
+    limit = min(max(limit, 1), 20)
+    offset = min(max(offset, 0), 200)
+
     like = f"%{q}%"
     where = ["p.text LIKE :like_q"]
-    params: dict = {"like_q": like, "limit": limit, "offset": offset, "q": q}
+    params: dict = {
+        "like_q": like,
+        "limit": limit + 1,  # one extra row to detect "has more"
+        "offset": offset,
+        "q": q,
+    }
     if category:
         where.append("d.category = :category")
         params["category"] = category
     where_sql = " AND ".join(where)
 
-    count_sql = f"""
-        SELECT COUNT(*)
-        FROM archive_pdfpage p
-        JOIN archive_document d ON d.id = p.document_id
-        WHERE {where_sql}
-    """
+    # No COUNT(*): that doubles the full-table scan and OOMs small instances.
+    # substr() avoids loading entire page text into Python for snippets.
     rows_sql = f"""
         SELECT
             d.id AS document_id,
@@ -222,7 +232,7 @@ def _search_sqlite(q: str, category: Optional[str], limit: int, offset: int) -> 
             d.pdf_file,
             d.pdf_file_path,
             p.page_number,
-            p.text
+            substr(p.text, 1, 500) AS text
         FROM archive_pdfpage p
         JOIN archive_document d ON d.id = p.document_id
         WHERE {where_sql}
@@ -230,8 +240,13 @@ def _search_sqlite(q: str, category: Optional[str], limit: int, offset: int) -> 
         LIMIT :limit OFFSET :offset
     """
     with ENGINE.connect() as conn:
-        total = conn.execute(text(count_sql), params).scalar_one()
+        conn.execute(text("PRAGMA busy_timeout = 3000"))
         rows = conn.execute(text(rows_sql), params).mappings().all()
+
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    # Approximate total so pagination "Next" still works without a full COUNT.
+    total = offset + len(rows) + (limit if has_more else 0)
 
     hits = [
         SearchHit(
@@ -241,7 +256,7 @@ def _search_sqlite(q: str, category: Optional[str], limit: int, offset: int) -> 
             year=r["year"],
             month=r["month"],
             page_number=r["page_number"],
-            snippet=_make_snippet(r["text"], q),
+            snippet=_make_snippet(r["text"] or "", q),
             pdf_url=_build_pdf_url(r["pdf_file"], r["pdf_file_path"]),
         )
         for r in rows
@@ -256,18 +271,27 @@ def health() -> dict:
 
 @app.get("/api/search", response_model=SearchResponse)
 def search(
-    q: str = Query(..., min_length=2, description="Search query"),
+    q: str = Query(..., min_length=2, max_length=64, description="Search query"),
     category: Optional[str] = Query(None, description="Restrict to a Document category"),
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=20),
+    offset: int = Query(0, ge=0, le=200),
 ) -> SearchResponse:
     q = q.strip()
     if not q:
         raise HTTPException(status_code=400, detail="Query is empty")
+    # Very short queries match too many rows and thrash small servers.
+    if not IS_POSTGRES and len(q) < 3:
+        raise HTTPException(
+            status_code=400,
+            detail="Please use at least 3 characters when searching (SQLite).",
+        )
 
-    if IS_POSTGRES:
-        total, hits = _search_postgres(q, category, limit, offset)
-    else:
-        total, hits = _search_sqlite(q, category, limit, offset)
+    try:
+        if IS_POSTGRES:
+            total, hits = _search_postgres(q, category, limit, offset)
+        else:
+            total, hits = _search_sqlite(q, category, limit, offset)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Search failed: {exc}") from exc
 
     return SearchResponse(query=q, total=total, results=hits)

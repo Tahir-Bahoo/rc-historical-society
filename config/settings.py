@@ -213,7 +213,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # URL of the FastAPI search service (set via env in prod, defaults to dev port)
 SEARCH_SERVICE_URL = os.environ.get("SEARCH_SERVICE_URL", "http://127.0.0.1:8001")
-SEARCH_SERVICE_TIMEOUT = float(os.environ.get("SEARCH_SERVICE_TIMEOUT", "5"))
+# Keep short so a slow SQLite scan cannot hang Gunicorn workers on a small EC2.
+SEARCH_SERVICE_TIMEOUT = float(os.environ.get("SEARCH_SERVICE_TIMEOUT", "3"))
 
 
 # Production-only security toggles. When DEBUG=False we assume the site is
