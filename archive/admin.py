@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from django.utils.html import format_html
 
-from .indexing import index_document
+from .indexing import queue_document_for_index
 from .models import (
     Company,
     Document,
@@ -46,8 +46,9 @@ class DocumentAdmin(admin.ModelAdmin):
             {
                 "fields": ("pdf_file", "pdf_file_path"),
                 "description": (
-                    "Upload a PDF (preferred) or set a legacy path that resolves "
-                    "from the legacy site root. Uploads trigger automatic indexing."
+                    "Upload a PDF (preferred) or set a legacy path. "
+                    "Search indexing is queued for a background worker "
+                    "(does not run inside the web process — avoids crashes on large files)."
                 ),
             },
         ),
@@ -66,42 +67,25 @@ class DocumentAdmin(admin.ModelAdmin):
         if not (obj.pdf_file or obj.pdf_file_path):
             return
 
-        pages = getattr(obj, "_last_indexed_pages", None)
-        if pages:
-            messages.info(
-                request,
-                f"Indexed {pages} page{'s' if pages != 1 else ''} of '{obj.publication_name}'. "
-                "The document is now searchable.",
-            )
-        elif getattr(obj, "_indexing_scheduled", False):
-            messages.info(
-                request,
-                f"PDF saved for '{obj.publication_name}'. "
-                "Search indexing is running in the background and may take a minute for large files.",
-            )
-        else:
-            messages.warning(
-                request,
-                "PDF was saved but search indexing did not start. "
-                "Use 'Reindex selected PDFs' from the document list if needed.",
-            )
+        messages.info(
+            request,
+            f"PDF saved for '{obj.publication_name}'. "
+            "Search indexing is queued for the background worker "
+            "(page_count / indexed_at update when that finishes). "
+            "The site stays online while indexing runs.",
+        )
 
-    @admin.action(description="Reindex selected PDFs")
+    @admin.action(description="Queue selected PDFs for search reindex")
     def reindex_selected(self, request, queryset):
-        indexed = 0
-        skipped = 0
-        total_pages = 0
+        queued = 0
         for doc in queryset:
-            pages = index_document(doc)
-            if pages:
-                indexed += 1
-                total_pages += pages
-            else:
-                skipped += 1
+            if doc.pdf_file or doc.pdf_file_path:
+                queue_document_for_index(doc)
+                queued += 1
         self.message_user(
             request,
-            f"Reindexed {indexed} document(s) ({total_pages} pages). "
-            f"Skipped {skipped} (no resolvable PDF).",
+            f"Queued {queued} document(s) for the background index worker. "
+            "Ensure process_index_queue is running under Supervisor.",
         )
 
 

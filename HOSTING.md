@@ -133,9 +133,30 @@ After HTTPS is working, confirm the site loads at `https://your-domain.org` and 
 - Log in at `https://your-domain.org/admin/`
 - Go to **Documents** → Add or edit a document → upload the PDF
 - **Large files (up to ~400 MB)** are supported
-- After save, search indexing runs **in the background** (may take 30–60 seconds for big scans)
-- Refresh the document page to confirm **page count** and **indexed at** are filled in
-- If search does not work, select the document(s) in the list and use action **“Reindex selected PDFs”**
+- After save, the PDF is stored and **search indexing is queued** (not run inside Gunicorn)
+- A separate worker (`process_index_queue`) indexes pending PDFs so the site does not crash
+- Refresh the document later to confirm **page count** and **indexed at** are filled in
+- If search is missing, select documents → **Queue selected PDFs for search reindex**
+
+### Index worker (required on EC2 / Supervisor hosts)
+
+PDF text extraction must **not** run inside Gunicorn. Install the worker:
+
+```bash
+sudo mkdir -p /logs
+sudo cp ~/rc-historical-society/deploy/supervisor-index-worker.conf /etc/supervisor/conf.d/rchs-index.conf
+# Edit paths in that file if needed, then:
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl status rchs-index
+```
+
+Manual one-shot:
+
+```bash
+cd ~/rc-historical-society && source env/bin/activate
+python manage.py process_index_queue --limit 5
+```
 
 ### Other content
 
@@ -224,7 +245,48 @@ docker compose up -d --build
 
 ## Troubleshooting
 
-### Site returns 502 / Bad Gateway
+### Site returns 502 / Bad Gateway (EC2 + Supervisor)
+
+This often means Gunicorn died (OOM from a large PDF, or the EC2 instance stopped).
+
+**1. Check whether the EC2 instance is running**
+
+In AWS Console → EC2 → Instances:
+
+- If **stopped** → select instance → **Instance state → Start instance**
+- Wait until **running** and status checks pass
+- Note the public IP (it may change if you have no Elastic IP)
+
+**2. SSH in and restart app services**
+
+```bash
+ssh ubuntu@YOUR_PUBLIC_IP
+cd ~/rc-historical-society
+source env/bin/activate
+
+sudo supervisorctl status
+sudo supervisorctl restart gunicorn
+sudo supervisorctl restart rchs-index   # after worker is installed
+sudo systemctl restart search           # if search uses systemd
+sudo systemctl restart nginx
+
+# Confirm
+curl -I http://127.0.0.1/     # or your local nginx port
+curl http://127.0.0.1:8001/health
+```
+
+**3. Check why it crashed**
+
+```bash
+sudo tail -n 100 /logs/gunicorn.err.log
+sudo dmesg | grep -i -E 'oom|killed' | tail -20
+free -h
+df -h
+```
+
+If you see **Out of memory**, do **not** reindex inside Gunicorn. Use `process_index_queue` only.
+
+### Site returns 502 / Bad Gateway (Docker)
 
 - Check Django is running: `docker compose logs django`
 - Restart: `docker compose restart django`
@@ -252,13 +314,14 @@ docker compose exec django python manage.py migrate
 
 ### PDF saved but not searchable
 
-Reindex manually:
-
 ```bash
-docker compose exec django python manage.py reindex_pdfs --only-missing
+cd ~/rc-historical-society && source env/bin/activate
+python manage.py process_index_queue --limit 10
+# or leave the Supervisor worker running
+sudo supervisorctl status rchs-index
 ```
 
-Or in admin: select documents → **Reindex selected PDFs**.
+Or in admin: select documents → **Queue selected PDFs for search reindex**.
 
 ### Static files or CSS missing
 

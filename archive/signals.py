@@ -1,15 +1,15 @@
-"""Auto-index a Document whenever its PDF file is added or changed.
+"""Queue PDF search indexing — never run heavy extraction inside Gunicorn.
 
-We use a ``pre_save`` hook to remember the previous file/path, then in
-``post_save`` we re-index only if the file actually changed (or the row
-is brand new). This keeps the admin snappy when editors edit non-PDF
-fields like ``available`` or ``brand``.
+Previously a background thread opened large PDFs inside the web worker. That
+could OOM the EC2 instance and leave Nginx returning 502 until restart.
+
+On PDF upload/change we only mark the document as pending. A separate process
+(``manage.py process_index_queue``) does the actual indexing.
 """
 
 from __future__ import annotations
 
 import logging
-import threading
 
 from django.db import transaction
 from django.db.models.signals import post_save, pre_save
@@ -37,22 +37,8 @@ def _capture_previous_pdf(sender, instance: Document, **kwargs):
     instance._previous_pdf_signature = _file_signature(previous)
 
 
-def _index_in_background(document_pk: int) -> None:
-    """Extract PDF text without blocking the admin HTTP request."""
-    from .indexing import index_document
-
-    try:
-        document = Document.objects.get(pk=document_pk)
-        pages = index_document(document)
-        logger.info("Background indexed %s: %d pages", document, pages)
-    except Document.DoesNotExist:
-        logger.warning("Background indexing skipped: document %s no longer exists", document_pk)
-    except Exception:
-        logger.exception("Background indexing failed for document %s", document_pk)
-
-
 @receiver(post_save, sender=Document)
-def auto_index_document(sender, instance: Document, created, **kwargs):
+def queue_document_indexing(sender, instance: Document, created, **kwargs):
     current = _file_signature(instance)
     if current == ("", ""):
         return
@@ -61,13 +47,14 @@ def auto_index_document(sender, instance: Document, created, **kwargs):
     if not created and current == previous:
         return
 
-    instance._indexing_scheduled = True
-    document_pk = instance.pk
-    transaction.on_commit(
-        lambda: threading.Thread(
-            target=_index_in_background,
-            args=(document_pk,),
-            daemon=True,
-            name=f"index-pdf-{document_pk}",
-        ).start()
-    )
+    def _mark_pending():
+        from .indexing import queue_document_for_index
+
+        queue_document_for_index(instance)
+        instance._indexing_queued = True
+        logger.info(
+            "Queued document %s for search indexing (worker will process it)",
+            instance.pk,
+        )
+
+    transaction.on_commit(_mark_pending)
