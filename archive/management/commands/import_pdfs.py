@@ -215,12 +215,41 @@ class Command(BaseCommand):
 
     def _create_document(self, pdf: Path, stem: str, year: int, defaults: dict):
         doc = Document(**defaults)
-        # Store under pdfs/<year>/<filename> via the field's upload_to.
-        upload_name = pdf.name
-        with pdf.open("rb") as fh:
-            doc.pdf_file.save(upload_name, File(fh), save=False)
+        # Field path (e.g. pdfs/2026/foo.pdf) via the field's upload_to.
+        name = doc.pdf_file.field.generate_filename(doc, pdf.name)
+        storage = doc.pdf_file.storage
+
+        if hasattr(storage, "bucket"):
+            # S3: stream straight from disk with a small, low-concurrency
+            # multipart config so a 300 MB PDF never blows up RAM on a tiny box.
+            self._upload_to_s3(storage, pdf, name)
+            doc.pdf_file.name = name
+        else:
+            with pdf.open("rb") as fh:
+                doc.pdf_file.save(Path(name).name, File(fh), save=False)
+
         # indexed_at stays NULL -> background worker will index it.
         doc.save()
+
+    def _upload_to_s3(self, storage, pdf: Path, name: str):
+        from boto3.s3.transfer import TransferConfig
+
+        location = getattr(storage, "location", "") or ""
+        key = f"{location.rstrip('/')}/{name}" if location else name
+        key = key.lstrip("/")
+        # ~16 MB peak (2 x 8 MB parts) instead of loading the whole file.
+        config = TransferConfig(
+            multipart_threshold=8 * 1024 * 1024,
+            multipart_chunksize=8 * 1024 * 1024,
+            max_concurrency=2,
+            use_threads=True,
+        )
+        storage.bucket.upload_file(
+            str(pdf),
+            key,
+            ExtraArgs={"ContentType": "application/pdf"},
+            Config=config,
+        )
 
     def _report(self, created, existing, skipped, unmatched, dry_run):
         prefix = "DRY RUN — " if dry_run else ""
