@@ -224,13 +224,24 @@ SEARCH_SERVICE_TIMEOUT = float(os.environ.get("SEARCH_SERVICE_TIMEOUT", "3"))
 
 # Production-only security toggles. When DEBUG=False we assume the site is
 # served over HTTPS via the reverse proxy (Nginx + LE/Caddy/Cloudflare).
+# While running over plain HTTP (e.g. by IP before TLS is set up), set the
+# DJANGO_*_SECURE / DJANGO_SSL_REDIRECT / DJANGO_HSTS_SECONDS toggles to 0.
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    SECURE_SSL_REDIRECT = os.environ.get("DJANGO_SSL_REDIRECT", "1") == "1"
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = _env_bool("DJANGO_SSL_REDIRECT", True)
+    SESSION_COOKIE_SECURE = _env_bool("DJANGO_SESSION_COOKIE_SECURE", True)
+    CSRF_COOKIE_SECURE = _env_bool("DJANGO_CSRF_COOKIE_SECURE", True)
     SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", "31536000"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
+
+# Origins trusted for CSRF-protected POSTs (admin login, forms). Django 4+
+# requires the request Origin to be listed here. Provide a comma-separated
+# list including scheme, e.g. "http://77.112.22.131,https://rchistoricalsociety.org".
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
