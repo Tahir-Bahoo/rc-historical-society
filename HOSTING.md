@@ -109,6 +109,74 @@ Large archives may take a while. You can run with `--only-missing` to skip alrea
 docker compose exec django python manage.py reindex_pdfs --only-missing
 ```
 
+### 6b. Bulk-import a whole PDF archive (from Google Drive, etc.)
+
+Use this instead of uploading hundreds of PDFs one-by-one in admin — the admin
+path can overload a small server. This command uploads directly to storage
+(S3 in production) and lets the background worker index slowly, so the site
+stays online.
+
+**Step 1 — Get the PDFs onto the server.**
+Easiest for a Google Drive folder: in Drive, right-click the folder →
+**Download** (Google zips it) → upload the zip to the server, then:
+
+```bash
+cd ~/rc-historical-society
+mkdir -p incoming
+# copy/scp the zip here, then:
+unzip your-archive.zip -d incoming
+```
+
+Or download a Drive folder directly on the server with `gdown`:
+
+```bash
+source env/bin/activate
+pip install gdown
+gdown --folder "https://drive.google.com/drive/folders/1kBwpPTdWjgf_urMNehVIm_8lp8s03zH6" -O incoming
+```
+
+The importer treats each **top-level folder as a category**. Recognised names:
+`Competition Plus`, `Rev Up`, `RC Model Cars`, `Xtreme RC Cars`,
+`Race Programs and Rules`, `Catalogs`, `Manuals`.
+
+**Step 2 — Preview (writes nothing):**
+
+```bash
+python manage.py import_pdfs --source ./incoming --dry-run
+```
+
+Any folder it doesn’t recognise (e.g. `Radio Race Car`) is listed as
+*unmatched*. Map it to a category explicitly:
+
+```bash
+python manage.py import_pdfs --source ./incoming \
+    --map "Radio Race Car=rc_model_cars" --dry-run
+```
+
+**Step 3 — Import for real (start small to be safe):**
+
+```bash
+# first 10 files only, as a test
+python manage.py import_pdfs --source ./incoming --map "Radio Race Car=rc_model_cars" --limit 10
+# then the rest
+python manage.py import_pdfs --source ./incoming --map "Radio Race Car=rc_model_cars"
+```
+
+The importer is **idempotent** — re-running skips files already imported, so
+it is safe to run again if it is interrupted.
+
+**Step 4 — Let indexing happen.**
+Documents are created with no search text yet (`indexed_at` empty). The
+`rchs-index` Supervisor worker indexes them one at a time. Watch progress:
+
+```bash
+sudo supervisorctl status rchs-index
+sudo tail -f /logs/rchs-index.out.log
+```
+
+> Year/month are guessed from filenames (e.g. `..._January_1986.pdf`). Fix any
+> wrong titles, years, or categories afterwards in the admin — no re-upload needed.
+
 ### 7. Enable HTTPS (strongly recommended)
 
 Docker Compose exposes **port 80 only**. For production you should add TLS. Common options:

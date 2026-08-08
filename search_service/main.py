@@ -24,7 +24,15 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.pool import NullPool
 
+try:
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover
+    load_dotenv = None
+
 HERE = Path(__file__).resolve().parent
+# Same .env Django uses (project root).
+if load_dotenv is not None:
+    load_dotenv(HERE.parent / ".env")
 
 
 def _find_sqlite() -> Path | None:
